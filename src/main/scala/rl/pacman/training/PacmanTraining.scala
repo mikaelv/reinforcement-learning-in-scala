@@ -22,9 +22,10 @@ import scala.scalajs.niocharset.StandardCharsets
   */
 object PacmanTraining extends App {
 
+
   // TODO: feel free to tweak α, γ and ε as you see fit
   private val initialAgentData: QLearning[AgentState, Move] =
-    QLearning(α = 0.9, γ = 1.0, ε = 0.5, Q = Map.empty)
+    QLearning(α = 0.9, γ = 1.0, ε = 0.01, Q = Map.empty)
 
   private val env: Environment[GameState, Move]                       = implicitly
   private val stateConversion: StateConversion[GameState, AgentState] = implicitly
@@ -87,6 +88,7 @@ object PacmanTraining extends App {
     println(s"Completed episodes = ${wins + losses}")
     println(s"Wins = $wins")
     println(s"Losses = $losses")
+    println(s"% Win = ${wins.toDouble / (wins + losses) * 100}")
     println(s"Longest episode so far = $longestEpisode")
     println(s"Won ${recentResults.count(identity)} of the last 10,000 games")
     println(s"State space size = ${agentData.Q.size}")

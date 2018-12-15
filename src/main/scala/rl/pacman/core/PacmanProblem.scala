@@ -10,10 +10,10 @@ object PacmanProblem {
   case class Location(x: Int, y: Int) {
 
     def move(move: Move): Location = move match {
-      case Move.Left  => Location(x - 1, y)
+      case Move.Left => Location(x - 1, y)
       case Move.Right => Location(x + 1, y)
-      case Move.Up    => Location(x, y - 1)
-      case Move.Down  => Location(x, y + 1)
+      case Move.Up => Location(x, y - 1)
+      case Move.Down => Location(x, y + 1)
     }
 
   }
@@ -22,10 +22,20 @@ object PacmanProblem {
   private def xy(x: Int, y: Int) = Location(x, y)
 
   // the current game mode: are the ghosts chasing Pacman or vice versa?
-  sealed trait Mode { def chasingGhosts: Boolean }
+  sealed trait Mode {
+    def chasingGhosts: Boolean
+  }
+
   object Mode {
-    case object Normal                         extends Mode { val chasingGhosts = false }
-    case class ChaseGhosts(timeRemaining: Int) extends Mode { val chasingGhosts = true  }
+
+    case object Normal extends Mode {
+      val chasingGhosts = false
+    }
+
+    case class ChaseGhosts(timeRemaining: Int) extends Mode {
+      val chasingGhosts = true
+    }
+
   }
 
   /*
@@ -37,21 +47,35 @@ object PacmanProblem {
   - the current game mode
    */
   case class GameState(
-      ghost1: Location,
-      ghost2: Location,
-      pacman: Location,
-      food: Set[Location],
-      pills: Set[Location],
-      mode: Mode
-  )
+                        ghost1: Location,
+                        ghost2: Location,
+                        pacman: Location,
+                        food: Set[Location],
+                        pills: Set[Location],
+                        mode: Mode
+                      )
+
+  case class RelativeLocation(diffX: Int, diffY: Int)
+
+  case class WallLocation(leftWall: Boolean, rightWall: Boolean, upWall: Boolean, downWall: Boolean)
+
+  //  case class DistanceAgentState(nearGhost: RelativeLocation, nearFood: RelativeLocation, nearPill: RelativeLocation, mode: Mode)
+  case class FoodAgentState(nearFood: RelativeLocation, walls: WallLocation, ghost1: RelativeLocation, ghost2: RelativeLocation)
+
 
   // the actions that the agent can take to move Pacman
   sealed trait Move
+
   object Move {
-    case object Up    extends Move
-    case object Down  extends Move
-    case object Left  extends Move
+
+    case object Up extends Move
+
+    case object Down extends Move
+
+    case object Left extends Move
+
     case object Right extends Move
+
   }
 
   val allActions: List[Move] = List(Move.Up, Move.Down, Move.Left, Move.Right)
@@ -76,7 +100,7 @@ object PacmanProblem {
    */
 
   val walls: Set[Location] =
-    // format: off
+  // format: off
     List.tabulate(20)(xy(_, 0)).toSet ++ // top wall
       Set(xy(0, 1), xy(7, 1), xy(12, 1), xy(19, 1)) ++
       Set(xy(0, 2), xy(2, 2), xy(3, 2), xy(7, 2), xy(8, 2), xy(11, 2), xy(12, 2), xy(16, 2), xy(17, 2), xy(19, 2)) ++
@@ -89,11 +113,11 @@ object PacmanProblem {
   private val initialGhost1 = xy(8, 1)
   private val initialGhost2 = xy(11, 1)
   private val initialPacman = xy(9, 5)
-  private val initialPills  = Set(xy(3, 3), xy(16, 3))
+  private val initialPills = Set(xy(3, 3), xy(16, 3))
 
   private val initialFood: Set[Location] =
-    // format: off
-      Set(xy(1, 1), xy(2, 1), xy(3, 1), xy(4, 1), xy(5, 1), xy(6, 1), xy(13, 1), xy(14, 1), xy(15, 1), xy(16, 1), xy(17, 1), xy(18, 1)) ++
+  // format: off
+    Set(xy(1, 1), xy(2, 1), xy(3, 1), xy(4, 1), xy(5, 1), xy(6, 1), xy(13, 1), xy(14, 1), xy(15, 1), xy(16, 1), xy(17, 1), xy(18, 1)) ++
       Set(xy(1, 2), xy(4, 2), xy(5, 2), xy(6, 2), xy(13, 2), xy(14, 2), xy(15, 2), xy(18, 2)) ++
       Set(xy(1, 3), xy(4, 3), xy(6, 3), xy(7, 3), xy(8, 3), xy(9, 3), xy(10, 3), xy(11, 3), xy(12, 3), xy(13, 3), xy(15, 3), xy(18, 3)) ++
       Set(xy(1, 4), xy(4, 4), xy(6, 4), xy(13, 4), xy(15, 4), xy(18, 4)) ++
@@ -118,6 +142,8 @@ object PacmanProblem {
       override def step(currentState: GameState, actionTaken: Move): (GameState, Reward) = {
         // Calculate Pacman's new location, based on actionTaken and adjacent walls
         val nextPacmanLocation = updatePacmanLocation(currentState.pacman, actionTaken)
+        // Check if it hit a wall
+        val hitwall = nextPacmanLocation == currentState.pacman
 
         // Calculate ghosts' new locations, based on their current locations and directions
         val nextGhost1 = updateGhost(currentState.ghost1, nextPacmanLocation, currentState.mode)
@@ -144,7 +170,7 @@ object PacmanProblem {
             Mode.ChaseGhosts(timeRemaining = 40)
           else
             currentState.mode match {
-              case Mode.Normal         => Mode.Normal
+              case Mode.Normal => Mode.Normal
               case Mode.ChaseGhosts(0) => Mode.Normal
               case Mode.ChaseGhosts(t) => Mode.ChaseGhosts(t - 1)
             }
@@ -166,8 +192,8 @@ object PacmanProblem {
             nextGhost2
 
         val pacmanTouchingAGhost = pacmanTouchingGhost1 || pacmanTouchingGhost2
-        val pacmanCaughtByGhost  = pacmanTouchingAGhost && !updatedMode.chasingGhosts
-        val pacmanCaughtAGhost   = pacmanTouchingAGhost && updatedMode.chasingGhosts
+        val pacmanCaughtByGhost = pacmanTouchingAGhost && !updatedMode.chasingGhosts
+        val pacmanCaughtAGhost = pacmanTouchingAGhost && updatedMode.chasingGhosts
 
         val nextState = GameState(
           ghost1 = updatedGhost1,
@@ -182,11 +208,13 @@ object PacmanProblem {
           if (pacmanCaughtByGhost)
             -100.0
           else if (ateFood)
-            1.0
+            10.0
           else if (atePill)
             10.0
           else if (pacmanCaughtAGhost)
             50.0
+          else if (hitwall)
+            -1.0
           else
             0.0
         }
@@ -194,8 +222,11 @@ object PacmanProblem {
         (nextState, reward)
       }
 
-      override def isTerminal(state: GameState): Boolean =
+      override def isTerminal(state: GameState): Boolean = {
+        //        if (state.food.isEmpty) println("food is empty")
+        //        if (isGameOver(state)) println("is Game OVER !!!")
         state.food.isEmpty || isGameOver(state)
+      }
 
       private def isGameOver(state: GameState): Boolean = {
         val pacmanTouchingGhost = state.pacman == state.ghost1 || state.pacman == state.ghost2
@@ -205,39 +236,40 @@ object PacmanProblem {
       private def updatePacmanLocation(pacman: Location, move: Move): Location = {
         val next = pacman.move(move)
         if (walls.contains(next))
-          // can't move into a wall, so stay where you are
+        // can't move into a wall, so stay where you are
           pacman
         else
           next
       }
 
       private def updateGhost(ghost: Location, pacman: Location, mode: Mode): Location = {
-        if (ghost == pacman && !mode.chasingGhosts) {
-          // if you've caught Pacman, stay where you are!
-          ghost
-        } else {
-          val smartMoveProb = 0.7
+//        ghost
+                if (ghost == pacman && !mode.chasingGhosts) {
+                  // if you've caught Pacman, stay where you are!
+                  ghost
+                } else {
+                  val smartMoveProb = 0.7
 
-          val validPositions = allActions.map(ghost.move).filterNot(walls.contains)
+                  val validPositions = allActions.map(ghost.move).filterNot(walls.contains)
 
-          if (Random.nextDouble() < smartMoveProb) {
-            // make a "smart" move, i.e. either chase Pacman or run away from him depending on the game mode
-            val sortedByDistance = validPositions
-              .map(location => (location, manhattanDist(location, pacman)))
-              .sortBy {
-                case (_, distance) =>
-                  if (mode.chasingGhosts)
-                    distance * -1 // the further from Pacman the better
-                  else
-                    distance // the closer the better
-              }
-            val bestDistance  = sortedByDistance.head._2
-            val bestPositions = sortedByDistance.takeWhile(_._2 == bestDistance)
-            Random.shuffle(bestPositions).head._1
-          } else {
-            Random.shuffle(validPositions).head
-          }
-        }
+                  if (Random.nextDouble() < smartMoveProb) {
+                    // make a "smart" move, i.e. either chase Pacman or run away from him depending on the game mode
+                    val sortedByDistance = validPositions
+                      .map(location => (location, manhattanDist(location, pacman)))
+                      .sortBy {
+                        case (_, distance) =>
+                          if (mode.chasingGhosts)
+                            distance * -1 // the further from Pacman the better
+                          else
+                            distance // the closer the better
+                      }
+                    val bestDistance = sortedByDistance.head._2
+                    val bestPositions = sortedByDistance.takeWhile(_._2 == bestDistance)
+                    Random.shuffle(bestPositions).head._1
+                  } else {
+                    Random.shuffle(validPositions).head
+                  }
+                }
       }
 
     }
@@ -262,10 +294,43 @@ object PacmanProblem {
   the state should track food in some way.
    */
   //case class AgentState(...)
-  type AgentState = GameState
+  //  type AgentState = GameState
+  //
+  //  implicit val stateConversion: StateConversion[GameState, AgentState] = { gameState =>
+  //    gameState
+  //  }
+  type AgentState = FoodAgentState
 
-  implicit val stateConversion: StateConversion[GameState, AgentState] = { gameState =>
-    gameState
+  //  implicit val stateConversion: StateConversion[GameState, DistanceAgentState] = { gameState =>
+  //    def me = manhattanDist(gameState.pacman, _: Location)
+  //
+  //    val ghostDist = Math.min(me(gameState.ghost1), me(gameState.ghost2))
+  //    val foodDist = if (gameState.food.isEmpty) Int.MaxValue else gameState.food.map(me).min
+  //
+  //    val pillDist = if (gameState.pills.isEmpty) Int.MaxValue else gameState.pills.map(me).min
+  //    DistanceAgentState(nearGhost = RelativeLocation(ghostDist), nearFood = RelativeLocation(foodDist), nearPill = RelativeLocation(pillDist), gameState.mode)
+  //  }
+
+
+  implicit val stateConversion2: StateConversion[GameState, AgentState] = { gameState =>
+
+    def relativeLocation(location: Location): RelativeLocation = {
+      RelativeLocation(
+        diffX = gameState.pacman.x - location.x,
+        diffY = gameState.pacman.y - location.y
+      )
+    }
+
+    def wallLocation(): WallLocation = {
+      WallLocation(leftWall = walls.contains(gameState.pacman.move(Move.Left)),
+        rightWall = walls.contains(gameState.pacman.move(Move.Right)),
+        downWall = walls.contains(gameState.pacman.move(Move.Down)),
+        upWall = walls.contains(gameState.pacman.move(Move.Up)))
+    }
+
+
+    val foodLoc = if (gameState.food.isEmpty) Location(Int.MaxValue, Int.MaxValue) else gameState.food.minBy(manhattanDist(gameState.pacman, _: Location))
+    FoodAgentState(nearFood = relativeLocation(foodLoc), walls = wallLocation(), ghost1 = relativeLocation(gameState.ghost1), ghost2 = relativeLocation(gameState.ghost2))
   }
 
 }
