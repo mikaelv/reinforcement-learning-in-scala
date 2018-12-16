@@ -3,7 +3,8 @@ package rl.pacman.training
 import io.circe.{Decoder, Encoder, KeyDecoder, KeyEncoder}
 import io.circe.generic.auto._
 import io.circe.generic.semiauto._
-import rl.pacman.core.PacmanProblem.{AgentState, Move}
+import rl.pacman.core.PacmanProblem.{AgentState, Mode, Move, RelativeLocation, WallLocation}
+import upickle.default.{macroRW, ReadWriter => RW}
 
 /*
  This is just an artifact of the way we encode the Q-values as JSON.
@@ -25,5 +26,11 @@ object QKeyValue {
 
   implicit val encoder: Encoder[QKeyValue] = deriveEncoder
   implicit val decoder: Decoder[QKeyValue] = deriveDecoder
+
+  implicit val rwLoc: RW[RelativeLocation] = macroRW
+  implicit val rwWall: RW[WallLocation] = macroRW
+  implicit val rwAgentState: RW[AgentState] = macroRW
+  implicit val rwMove: RW[Move] = macroRW
+  implicit val rw: RW[QKeyValue] = macroRW
 
 }

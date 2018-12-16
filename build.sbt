@@ -6,5 +6,6 @@ enablePlugins(ScalaJSPlugin)
 libraryDependencies ++= Seq(
   "org.scala-js" %%% "scalajs-dom" % "0.9.6",
   "io.circe" %%% "circe-generic" % "0.10.1",
-  "io.circe" %%% "circe-parser" % "0.10.1"
+  "io.circe" %%% "circe-parser" % "0.10.1",
+  "com.lihaoyi" %%% "upickle" % "0.7.1"
 )

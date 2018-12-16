@@ -55,13 +55,6 @@ object PacmanProblem {
                         mode: Mode
                       )
 
-  case class RelativeLocation(diffX: Int, diffY: Int)
-
-  case class WallLocation(leftWall: Boolean, rightWall: Boolean, upWall: Boolean, downWall: Boolean)
-
-  //  case class DistanceAgentState(nearGhost: RelativeLocation, nearFood: RelativeLocation, nearPill: RelativeLocation, mode: Mode)
-  case class FoodAgentState(nearFood: RelativeLocation, walls: WallLocation, ghost1: RelativeLocation, ghost2: RelativeLocation)
-
 
   // the actions that the agent can take to move Pacman
   sealed trait Move
@@ -243,33 +236,32 @@ object PacmanProblem {
       }
 
       private def updateGhost(ghost: Location, pacman: Location, mode: Mode): Location = {
-//        ghost
-                if (ghost == pacman && !mode.chasingGhosts) {
-                  // if you've caught Pacman, stay where you are!
-                  ghost
-                } else {
-                  val smartMoveProb = 0.7
+        if (ghost == pacman && !mode.chasingGhosts) {
+          // if you've caught Pacman, stay where you are!
+          ghost
+        } else {
+          val smartMoveProb = 0.7
 
-                  val validPositions = allActions.map(ghost.move).filterNot(walls.contains)
+          val validPositions = allActions.map(ghost.move).filterNot(walls.contains)
 
-                  if (Random.nextDouble() < smartMoveProb) {
-                    // make a "smart" move, i.e. either chase Pacman or run away from him depending on the game mode
-                    val sortedByDistance = validPositions
-                      .map(location => (location, manhattanDist(location, pacman)))
-                      .sortBy {
-                        case (_, distance) =>
-                          if (mode.chasingGhosts)
-                            distance * -1 // the further from Pacman the better
-                          else
-                            distance // the closer the better
-                      }
-                    val bestDistance = sortedByDistance.head._2
-                    val bestPositions = sortedByDistance.takeWhile(_._2 == bestDistance)
-                    Random.shuffle(bestPositions).head._1
-                  } else {
-                    Random.shuffle(validPositions).head
-                  }
-                }
+          if (Random.nextDouble() < smartMoveProb) {
+            // make a "smart" move, i.e. either chase Pacman or run away from him depending on the game mode
+            val sortedByDistance = validPositions
+              .map(location => (location, manhattanDist(location, pacman)))
+              .sortBy {
+                case (_, distance) =>
+                  if (mode.chasingGhosts)
+                    distance * -1 // the further from Pacman the better
+                  else
+                    distance // the closer the better
+              }
+            val bestDistance = sortedByDistance.head._2
+            val bestPositions = sortedByDistance.takeWhile(_._2 == bestDistance)
+            Random.shuffle(bestPositions).head._1
+          } else {
+            Random.shuffle(validPositions).head
+          }
+        }
       }
 
     }
@@ -299,7 +291,20 @@ object PacmanProblem {
   //  implicit val stateConversion: StateConversion[GameState, AgentState] = { gameState =>
   //    gameState
   //  }
-  type AgentState = FoodAgentState
+
+  case class RelativeLocation(diffX: Int, diffY: Int)
+
+  case class WallLocation(leftWall: Boolean, rightWall: Boolean, upWall: Boolean, downWall: Boolean)
+
+  //  case class DistanceAgentState(nearGhost: RelativeLocation, nearFood: RelativeLocation, nearPill: RelativeLocation, mode: Mode)
+  case class MyopicAgentState(nearestFood: RelativeLocation,
+                              nearestPill: RelativeLocation,
+                              wallLocation: WallLocation,
+                              ghost1: RelativeLocation,
+                              ghost2: RelativeLocation,
+                              mode: Boolean)
+
+  type AgentState = MyopicAgentState
 
   //  implicit val stateConversion: StateConversion[GameState, DistanceAgentState] = { gameState =>
   //    def me = manhattanDist(gameState.pacman, _: Location)
@@ -315,22 +320,47 @@ object PacmanProblem {
   implicit val stateConversion2: StateConversion[GameState, AgentState] = { gameState =>
 
     def relativeLocation(location: Location): RelativeLocation = {
-      RelativeLocation(
-        diffX = gameState.pacman.x - location.x,
-        diffY = gameState.pacman.y - location.y
-      )
+      val diffX = gameState.pacman.x - location.x
+      val diffY = gameState.pacman.y - location.y
+
+      def absCap(diff: Int, cap: Int): Int = if (Math.abs(diff) > cap) cap else diff
+      def cap(diff: Int, cap: Int): Int = if (diff > cap) cap else if (diff < -cap) -cap else diff
+      def capXY(diffX: Int, diffY: Int, cap: Int): (Int, Int) =
+        if (diffX == cap) (cap, cap)
+        else if (diffY == cap) (cap, cap)
+        else (diffX, diffY)
+
+      RelativeLocation(cap(diffX, 2), cap(diffY, 2))
+//      RelativeLocation.tupled(
+//        capXY(absCap(diffX, 3), absCap(diffY, 3), 3)
+//      )
     }
 
-    def wallLocation(): WallLocation = {
-      WallLocation(leftWall = walls.contains(gameState.pacman.move(Move.Left)),
+    val wallLocation: WallLocation = {
+      WallLocation(
+        leftWall = walls.contains(gameState.pacman.move(Move.Left)),
         rightWall = walls.contains(gameState.pacman.move(Move.Right)),
         downWall = walls.contains(gameState.pacman.move(Move.Down)),
         upWall = walls.contains(gameState.pacman.move(Move.Up)))
     }
 
 
-    val foodLoc = if (gameState.food.isEmpty) Location(Int.MaxValue, Int.MaxValue) else gameState.food.minBy(manhattanDist(gameState.pacman, _: Location))
-    FoodAgentState(nearFood = relativeLocation(foodLoc), walls = wallLocation(), ghost1 = relativeLocation(gameState.ghost1), ghost2 = relativeLocation(gameState.ghost2))
+    val foodLoc =
+      if (gameState.food.isEmpty) Location(Int.MaxValue, Int.MaxValue)
+      else gameState.food.minBy(manhattanDist(gameState.pacman, _: Location))
+
+    val pillLoc =
+      if (gameState.pills.isEmpty) Location(Int.MaxValue, Int.MaxValue)
+      else gameState.pills.minBy(manhattanDist(gameState.pacman, _: Location))
+
+    MyopicAgentState(
+      nearestFood = relativeLocation(foodLoc),
+      nearestPill = relativeLocation(pillLoc),
+      wallLocation = wallLocation,
+      ghost1 = relativeLocation(gameState.ghost1),
+      ghost2 = relativeLocation(gameState.ghost2),
+      mode = gameState.mode.chasingGhosts
+    )
   }
 
 }

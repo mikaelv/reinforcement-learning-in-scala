@@ -1,4 +1,5 @@
 package rl.pacman.training
+
 import java.nio.file.{Files, Paths}
 import java.time.Instant
 
@@ -25,22 +26,22 @@ object PacmanTraining extends App {
 
   // TODO: feel free to tweak α, γ and ε as you see fit
   private val initialAgentData: QLearning[AgentState, Move] =
-    QLearning(α = 0.9, γ = 1.0, ε = 0.01, Q = Map.empty)
+    QLearning(α = 0.9, γ = 0.8, ε = 0.01, Q = Map.empty)
 
-  private val env: Environment[GameState, Move]                       = implicitly
+  private val env: Environment[GameState, Move] = implicitly
   private val stateConversion: StateConversion[GameState, AgentState] = implicitly
   private val agentBehaviour: AgentBehaviour[QLearning[AgentState, Move], AgentState, Move] =
     implicitly
 
-  private var t: Long                               = 0
-  private var episodeLength                         = 0
-  private var longestEpisode                        = 0
-  private var wins: Long                            = 0
-  private var losses: Long                          = 0
+  private var t: Long = 0
+  private var episodeLength = 0
+  private var longestEpisode = 0
+  private var wins: Long = 0
+  private var losses: Long = 0
   private val recentResults: mutable.Queue[Boolean] = new mutable.Queue[Boolean]()
-  private val MaxQueueSize                          = 10000
+  private val MaxQueueSize = 10000
 
-  private var agentData            = initialAgentData
+  private var agentData = initialAgentData
   private var gameState: GameState = initialState
 
   val trainingDir = Paths.get(s"pacman-training/${Instant.now()}")
@@ -52,7 +53,7 @@ object PacmanTraining extends App {
   )
 
   private def step(): Unit = {
-    val currentState    = stateConversion.convertState(gameState)
+    val currentState = stateConversion.convertState(gameState)
     val possibleActions = env.possibleActions(gameState)
     val (nextAction, updateAgent) =
       agentBehaviour.chooseAction(agentData, currentState, possibleActions)
@@ -88,15 +89,26 @@ object PacmanTraining extends App {
     println(s"Completed episodes = ${wins + losses}")
     println(s"Wins = $wins")
     println(s"Losses = $losses")
-    println(s"% Win = ${wins.toDouble / (wins + losses) * 100}")
     println(s"Longest episode so far = $longestEpisode")
     println(s"Won ${recentResults.count(identity)} of the last 10,000 games")
     println(s"State space size = ${agentData.Q.size}")
     println()
 
     if (t % 5000000 == 0) {
+//      saveQValuesBinary()
       saveQValues()
     }
+  }
+
+  private def saveQValuesBinary(): Unit = {
+    print("Saving Q values to binary file... ")
+    val list: Seq[QKeyValue] = agentData.Q.map { case (k, v) => QKeyValue(k, v) }.toSeq
+    import upickle.default._
+    Files.write(
+      trainingDir.resolve(s"Q-after-$t-steps.bin"),
+      writeBinary(list)
+    )
+
   }
 
   private def saveQValues(): Unit = {
