@@ -26,7 +26,7 @@ object PacmanTraining extends App {
 
   // TODO: feel free to tweak α, γ and ε as you see fit
   private val initialAgentData: QLearning[AgentState, Move] =
-    QLearning(α = 0.9, γ = 0.8, ε = 0.01, Q = Map.empty)
+    QLearning(α = 0.1, γ = 0.8, ε = 0.01, Q = Map.empty)
 
   private val env: Environment[GameState, Move] = implicitly
   private val stateConversion: StateConversion[GameState, AgentState] = implicitly
