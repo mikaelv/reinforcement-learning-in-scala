@@ -37,7 +37,7 @@ object PacmanUI {
         info.innerHTML = "Loaded Q data."
 
         val initialAgentData: QLearning[AgentState, Move] =
-          QLearning(α = 0.1, γ = 0.9, ε = 0.1, Q = q)
+          QLearning(α = 0.1, γ = 0.9, ε = 0.0, Q = q)
 
         var agentData = initialAgentData
         var gameState: GameState = initialState

@@ -1,6 +1,7 @@
 package rl.pacman.core
 
 import rl.core._
+import rl.pacman.core.PacmanProblem.Mode.ChaseGhosts
 
 import scala.util.Random
 
@@ -300,9 +301,10 @@ object PacmanProblem {
   case class MyopicAgentState(nearestFood: RelativeLocation,
                               nearestPill: RelativeLocation,
                               wallLocation: WallLocation,
-                              ghost1: RelativeLocation,
-                              ghost2: RelativeLocation,
-                              mode: Boolean)
+                              nearestGhost1: Option[RelativeLocation])
+
+  //                              nearestGhost2: RelativeLocation,
+  //                              mode: Boolean)
 
   type AgentState = MyopicAgentState
 
@@ -319,21 +321,23 @@ object PacmanProblem {
 
   implicit val stateConversion2: StateConversion[GameState, AgentState] = { gameState =>
 
-    def relativeLocation(location: Location): RelativeLocation = {
+    def relativeLocation(location: Location, cap: Int): RelativeLocation = {
       val diffX = gameState.pacman.x - location.x
       val diffY = gameState.pacman.y - location.y
 
       def absCap(diff: Int, cap: Int): Int = if (Math.abs(diff) > cap) cap else diff
+
       def cap(diff: Int, cap: Int): Int = if (diff > cap) cap else if (diff < -cap) -cap else diff
+
       def capXY(diffX: Int, diffY: Int, cap: Int): (Int, Int) =
         if (diffX == cap) (cap, cap)
         else if (diffY == cap) (cap, cap)
         else (diffX, diffY)
 
       RelativeLocation(cap(diffX, 2), cap(diffY, 2))
-//      RelativeLocation.tupled(
-//        capXY(absCap(diffX, 3), absCap(diffY, 3), 3)
-//      )
+      //      RelativeLocation.tupled(
+      //        capXY(absCap(diffX, 3), absCap(diffY, 3), 3)
+      //      )
     }
 
     val wallLocation: WallLocation = {
@@ -353,13 +357,17 @@ object PacmanProblem {
       if (gameState.pills.isEmpty) Location(Int.MaxValue, Int.MaxValue)
       else gameState.pills.minBy(manhattanDist(gameState.pacman, _: Location))
 
+    val nearestGhost = Seq(gameState.ghost1, gameState.ghost2).minBy(manhattanDist(gameState.pacman, _: Location))
     MyopicAgentState(
-      nearestFood = relativeLocation(foodLoc),
-      nearestPill = relativeLocation(pillLoc),
+      nearestFood = relativeLocation(foodLoc, 1),
+      nearestPill = relativeLocation(pillLoc, 1),
       wallLocation = wallLocation,
-      ghost1 = relativeLocation(gameState.ghost1),
-      ghost2 = relativeLocation(gameState.ghost2),
-      mode = gameState.mode.chasingGhosts
+      nearestGhost1 = gameState.mode match {
+        case ChaseGhosts(t) if t > 3 => None
+        case _ => Some(relativeLocation(nearestGhost, 4))
+      }
+      //      nearestGhost2 = relativeLocation(gameState.ghost2, 3),
+      //      mode = gameState.mode.chasingGhosts
     )
   }
 
